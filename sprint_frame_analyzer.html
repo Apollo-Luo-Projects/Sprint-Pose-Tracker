@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sprint frame analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151A;
+    --panel:#1B1F26;
+    --panel-2:#20242C;
+    --border:#2A2F38;
+    --border-strong:#3A414D;
+    --text:#ECEAE4;
+    --text-muted:#8B92A0;
+    --amber:#F2A93B;
+    --amber-dim:#B8823A;
+    --teal:#3FD6C5;
+    --red:#E0674B;
+    --font-ui: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    font-size:14px;
+    padding:24px;
+  }
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  .subtitle{
+    color:var(--text-muted);
+    font-size:13px;
+    margin:0 0 24px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    color:var(--text-muted);
+    margin:0 0 12px;
+  }
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  label{font-size:13px;color:var(--text-muted);}
+  input[type=file]{
+    color:var(--text);
+    font-size:13px;
+    max-width:220px;
+  }
+  input[type=number], select, input[type=text]{
+    background:var(--panel-2);
+    border:1px solid var(--border-strong);
+    color:var(--text);
+    border-radius:6px;
+    padding:7px 10px;
+    font-size:13px;
+    font-family:var(--font-ui);
+  }
+  input[type=number]{width:70px;}
+  button{
+    background:var(--panel-2);
+    border:1px solid var(--border-strong);
+    color:var(--text);
+    border-radius:6px;
+    padding:8px 14px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:var(--font-ui);
+  }
+  button:hover{border-color:var(--amber-dim);}
+  button:active{transform:scale(0.98);}
+  button.primary{
+    background:var(--amber);
+    border-color:var(--amber);
+    color:#231705;
+    font-weight:600;
+  }
+  button.primary:hover{background:#e59a2a;}
+  button.ghost{background:transparent;}
+  button.danger{color:var(--red);}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  .stage{
+    position:relative;
+    width:100%;
+    background:#000;
+    border-radius:8px;
+    overflow:hidden;
+    line-height:0;
+  }
+  video{width:100%;display:block;}
+  canvas{
+    position:absolute;
+    top:0;left:0;
+    width:100%;height:100%;
+    cursor:default;
+  }
+  canvas.armed{cursor:crosshair;}
+  canvas.dragging{cursor:grabbing !important;}
+  tr[data-joint]{cursor:pointer;}
+  tr[data-joint]:hover td{background:rgba(255,255,255,0.03);}
+  tr.selected td{background:rgba(63,214,197,0.14);}
+  .angle-result{margin-top:10px;padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:8px;font-family:var(--font-mono);font-size:15px;}
+  .angle-result strong{color:#3FD6C5;font-size:20px;}
+  canvas.picking-angle{cursor:copy;}
+  .timecode{
+    font-family:var(--font-mono);
+    font-size:22px;
+    font-weight:600;
+    color:var(--amber);
+    letter-spacing:1px;
+    background:var(--panel-2);
+    border:1px solid var(--border-strong);
+    border-radius:6px;
+    padding:6px 14px;
+    display:inline-block;
+  }
+  .frame-count{
+    font-family:var(--font-mono);
+    color:var(--text-muted);
+    font-size:13px;
+  }
+  input[type=range]{
+    width:100%;
+    accent-color: var(--amber);
+  }
+  .transport{display:flex;align-items:center;gap:8px;margin:12px 0;}
+  .transport button{min-width:44px;}
+  .speed-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .speed-row input[type=range]{width:160px;}
+  .speed-label{font-family:var(--font-mono);width:48px;color:var(--text-muted);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{
+    text-align:left;
+    color:var(--text-muted);
+    font-weight:500;
+    padding:5px 6px;
+    border-bottom:1px solid var(--border);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  td{
+    padding:5px 6px;
+    border-bottom:1px solid var(--border);
+    font-family:var(--font-mono);
+  }
+  tr.manual td{color:var(--amber);}
+  tr.missing td{color:var(--text-muted);font-style:italic;}
+  .event-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 8px;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+  }
+  .event-item:last-child{border-bottom:none;}
+  .event-item .frame-badge{
+    font-family:var(--font-mono);
+    background:var(--panel-2);
+    border:1px solid var(--border-strong);
+    border-radius:4px;
+    padding:2px 6px;
+    color:var(--teal);
+    font-size:12px;
+  }
+  .event-item .label{flex:1;}
+  .event-item button{padding:3px 8px;font-size:12px;}
+  .hint{color:var(--text-muted);font-size:12px;margin-top:8px;line-height:1.5;}
+  .empty{color:var(--text-muted);font-size:13px;padding:8px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Sprint frame analyzer</h1>
+  <p class="subtitle">Step through your video at its real frame rate, review the tracked skeleton, correct points by hand, and mark events like touchdown.</p>
+
+  <div class="row" style="margin:6px 0 18px;">
+    <button id="tabMainBtn" class="primary">Track and edit</button>
+    <button id="tabEventsBtn" class="ghost">Touchdown / toe-off</button>
+  </div>
+
+  <div id="tabMain">
+
+  <div class="panel">
+    <h2>Load files</h2>
+    <div class="row">
+      <div>
+        <label>Video file</label><br>
+        <input type="file" id="videoInput" accept="video/*">
+      </div>
+      <div>
+        <label>Coordinates CSV (optional)</label><br>
+        <input type="file" id="csvInput" accept=".csv">
+      </div>
+      <div>
+        <label>Frame rate (fps)</label><br>
+        <input type="number" id="fpsInput" value="25" step="0.01" min="1">
+      </div>
+    </div>
+    <p class="hint" id="loadStatus">No video loaded yet. Use <span style="font-family:var(--font-mono)">cap.get(cv2.CAP_PROP_FPS)</span> from your Python script to get the exact fps, and enter it before you start marking frames.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Run tracker</h2>
+    <div class="row">
+      <div>
+        <label>Side facing the camera</label><br>
+        <select id="nearSide">
+          <option value="">Auto-detect</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      <div>
+        <label>Smoothing (frames, 0 = off)</label><br>
+        <input type="number" id="sigmaInput" value="1.5" step="0.1" min="0">
+      </div>
+      <div>
+        <label>Model</label><br>
+        <select id="modelSel">
+          <option value="2">Accurate (slowest)</option>
+          <option value="1">Balanced</option>
+          <option value="0">Fast</option>
+        </select>
+      </div>
+      <div>
+        <label>Start / end in seconds (optional)</label><br>
+        <input type="number" id="tStart" value="0" step="0.1" min="0">
+        <input type="number" id="tEnd" placeholder="end" step="0.1" min="0">
+      </div>
+      <div style="align-self:flex-end;">
+        <button id="trackBtn" class="primary">Track this video</button>
+      </div>
+    </div>
+    <p class="hint" id="trackStatus">Choose a video above, then track it. The coordinates load straight into the analyzer. This needs <span style="font-family:var(--font-mono)">tracker_server.py</span> running, and the page opened at http://localhost:5000.</p>
+  </div>
+
+  <div class="panel">
+    <div class="stage" id="stage">
+      <video id="video" playsinline></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div class="transport">
+      <button id="prevFrame" title="Previous frame">&larr;</button>
+      <button id="playPause" title="Play / pause">Play</button>
+      <button id="nextFrame" title="Next frame">&rarr;</button>
+      <span class="timecode" id="timecode">00:00:00:00</span>
+      <span class="frame-count" id="frameCount">frame 0 / 0</span>
+    </div>
+
+    <input type="range" id="scrubber" min="0" max="0" value="0" step="1">
+
+    <div class="speed-row">
+      <label>Playback speed</label>
+      <input type="range" id="speedSlider" min="0.1" max="1" value="1" step="0.05">
+      <span class="speed-label" id="speedLabel">1.00x</span>
+    </div>
+    <p class="hint">Arrow keys step one frame at a time when the page has focus. Space bar plays or pauses.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Edit a point on this frame</h2>
+      <div class="row">
+        <select id="jointSelect">
+          <option value="">Add a missing point...</option>
+        </select>
+        <button id="clearOverride" class="ghost">Clear override for selected joint</button>
+      </div>
+      <p class="hint">Click any point on the frame to select it (it gets a teal ring), then drag it anywhere — the table and export update live as you move it. You can also click a row in the table below to select that joint. If a joint has no point at all on this frame, pick it from the dropdown above and click where it belongs to add one.</p>
+      <h2 style="margin-top:18px;">Coordinates at this frame</h2>
+      <table>
+        <thead><tr><th>#</th><th>Joint</th><th>X</th><th>Y</th></tr></thead>
+        <tbody id="coordTable"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Mark an event</h2>
+      <div class="row">
+        <input type="text" id="eventLabel" placeholder="Touchdown" style="flex:1;">
+        <button id="markEvent" class="primary">Mark at current frame</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button id="quickTouchdown" class="ghost">+ Touchdown</button>
+        <button id="quickToeoff" class="ghost">+ Toe-off</button>
+      </div>
+      <div id="eventList" style="margin-top:14px;">
+        <p class="empty">No events marked yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Angle calculator</h2>
+    <p class="hint">Just click any three points on the frame, in order — the angle pops out automatically, measured at the 2nd point you click (the vertex), between rays to the 1st and 3rd. Keep clicking to check a new set; the last 3 points you clicked are always what's shown. Or set the three joints manually below.</p>
+    <div class="row">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);">
+        <input type="checkbox" id="autoAngleToggle" checked style="width:auto;">
+        Build angle from the last 3 points I click
+      </label>
+      <button id="clearAnglePicks" class="ghost">Clear picks</button>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <select id="angleA"><option value="">Point A...</option></select>
+      <select id="angleVertex"><option value="">Vertex...</option></select>
+      <select id="angleB"><option value="">Point B...</option></select>
+    </div>
+    <div id="angleResult" class="angle-result">Click any three points on the frame to see the angle.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Export</h2>
+    <div class="row">
+      <button id="exportCsv" class="primary">Download corrected CSV</button>
+      <button id="exportEvents" class="primary">Download events CSV</button>
+    </div>
+    <p class="hint">The corrected CSV has one row per joint per frame, with a "manual" column marking any point you moved by hand.</p>
+  </div>
+
+  </div>
+
+  <div id="tabEvents" style="display:none">
+    <div class="panel">
+      <h2>Detect touchdown and toe-off</h2>
+      <div class="row">
+        <div>
+          <label>Ground tolerance (% of torso length)</label><br>
+          <input type="number" id="tolPct" value="12" min="1" max="50">
+        </div>
+        <div>
+          <label>Minimum contact frames</label><br>
+          <input type="number" id="minLen" value="2" min="1" max="10">
+        </div>
+        <div style="align-self:flex-end;">
+          <button id="detectBtn" class="primary">Detect</button>
+          <button id="addContactBtn" class="ghost">+ Add stance at current frame</button>
+        </div>
+      </div>
+      <p class="hint" id="detectStatus">Track or load a video first, then detect. One stance is a touchdown plus its toe-off, for one foot. Front = near-side leg (nodes 8-10), rear = far-side leg (nodes 11-13).</p>
+    </div>
+
+    <div class="panel">
+      <h2>Stances</h2>
+      <div id="contactList"><p class="empty">No stances yet.</p></div>
+    </div>
+
+    <div class="panel" id="detailPanel" style="display:none">
+      <h2 id="detailTitle">Stance data</h2>
+      <div class="row">
+        <canvas id="pvTd" width="300" height="220"></canvas>
+        <canvas id="pvTo" width="300" height="220"></canvas>
+      </div>
+      <div id="detailTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Submit</h2>
+      <div class="row">
+        <button id="submitBtn" class="primary">Submit and download CSVs</button>
+      </div>
+      <p class="hint">Downloads two files: the corrected coordinates for every frame (with your node edits), and the event data CSV with one row per touchdown and toe-off holding all 13 nodes, joint angles, contact time and flight time.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const JOINT_NAMES = [
+  "head","neck","elbow_front","wrist_front","elbow_rear","wrist_rear",
+  "pelvis","front_knee","front_heel","front_toe","rear_knee","rear_heel","rear_toe"
+];
+const NODE_NUMBERS = {
+  head:1, neck:2, elbow_front:3, wrist_front:4, elbow_rear:5, wrist_rear:6,
+  pelvis:7, front_knee:8, front_heel:9, front_toe:10, rear_knee:11, rear_heel:12, rear_toe:13
+};
+const CONNECTIONS = [
+  ["head","neck"],
+  ["neck","elbow_front"],["elbow_front","wrist_front"],
+  ["neck","elbow_rear"],["elbow_rear","wrist_rear"],
+  ["neck","pelvis"],
+  ["pelvis","front_knee"],["front_knee","front_heel"],["front_heel","front_toe"],
+  ["pelvis","rear_knee"],["rear_knee","rear_heel"],["rear_heel","rear_toe"]
+];
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+const fpsInput = document.getElementById('fpsInput');
+const scrubber = document.getElementById('scrubber');
+const timecodeEl = document.getElementById('timecode');
+const frameCountEl = document.getElementById('frameCount');
+const playPauseBtn = document.getElementById('playPause');
+const speedSlider = document.getElementById('speedSlider');
+const speedLabel = document.getElementById('speedLabel');
+const jointSelect = document.getElementById('jointSelect');
+const coordTable = document.getElementById('coordTable');
+const eventListEl = document.getElementById('eventList');
+const loadStatus = document.getElementById('loadStatus');
+const angleASelect = document.getElementById('angleA');
+const angleVertexSelect = document.getElementById('angleVertex');
+const angleBSelect = document.getElementById('angleB');
+const angleResultEl = document.getElementById('angleResult');
+const autoAngleToggle = document.getElementById('autoAngleToggle');
+const clearAnglePicksBtn = document.getElementById('clearAnglePicks');
+
+JOINT_NAMES.forEach(name => {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = NODE_NUMBERS[name] + '. ' + name.replace(/_/g,' ');
+  jointSelect.appendChild(opt);
+});
+
+[angleASelect, angleVertexSelect, angleBSelect].forEach(select => {
+  JOINT_NAMES.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = NODE_NUMBERS[name] + '. ' + name.replace(/_/g,' ');
+    select.appendChild(opt);
+  });
+});
+
+let fps = 25;
+let totalFrames = 0;
+let csvData = {};
+let overrides = {};
+let events = [];
+let rafId = null;
+let armedJoint = '';
+let selectedJoint = '';
+let draggingJoint = null;
+const HIT_RADIUS = 14;
+let angleClickQueue = [];
+
+fpsInput.addEventListener('input', () => {
+  fps = parseFloat(fpsInput.value) || 25;
+  recomputeTotalFrames();
+});
+
+function recomputeTotalFrames(){
+  if(video.duration && isFinite(video.duration)){
+    totalFrames = Math.max(1, Math.floor(video.duration * fps));
+    scrubber.max = totalFrames - 1;
+    render();
+  }
+}
+
+document.getElementById('videoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  videoFile = file;
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  loadStatus.textContent = 'Loading "' + file.name + '"...';
+});
+
+video.addEventListener('loadedmetadata', () => {
+  resizeCanvas();
+  fps = parseFloat(fpsInput.value) || 25;
+  recomputeTotalFrames();
+  loadStatus.textContent = 'Video loaded: ' + video.videoWidth + 'x' + video.videoHeight +
+    ', duration ' + video.duration.toFixed(2) + 's, ' + totalFrames + ' frames at ' + fps + ' fps.';
+  seekToFrame(0);
+});
+
+new ResizeObserver(resizeCanvas).observe(stage);
+
+function resizeCanvas(){
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 360;
+}
+
+document.getElementById('csvInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    parseCsv(reader.result);
+    loadStatus.textContent += ' CSV loaded with data for ' + Object.keys(csvData).length + ' frames.';
+    render();
+  };
+  reader.readAsText(file);
+});
+
+function parseCsv(text){
+  csvData = {};
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  for(let i = 1; i < lines.length; i++){
+    const parts = lines[i].split(',');
+    if(parts.length < 5) continue;
+    const frame = parseInt(parts[0], 10);
+    const jointName = parts[1].trim();
+    const x = parts[3].trim();
+    const y = parts[4].trim();
+    if(!csvData[frame]) csvData[frame] = {};
+    if(x !== '' && y !== ''){
+      csvData[frame][jointName] = { x: parseFloat(x), y: parseFloat(y),
+        v: parts[5] ? parseFloat(parts[5]) : 1, interp: parts[6] === '1' };
+    }
+  }
+}
+
+function currentFrame(){
+  return Math.min(totalFrames - 1, Math.max(0, Math.round(video.currentTime * fps)));
+}
+
+function seekToFrame(frame){
+  frame = Math.min(totalFrames - 1, Math.max(0, frame));
+  video.currentTime = frame / fps;
+}
+
+function mergedJointsAt(frame){
+  const base = csvData[frame] || {};
+  const over = overrides[frame] || {};
+  const result = {};
+  JOINT_NAMES.forEach(name => {
+    if(over[name]) result[name] = { pt: over[name], manual: true };
+    else if(base[name]) result[name] = { pt: base[name], manual: false };
+  });
+  return result;
+}
+
+function framesToTimecode(frame, fpsVal){
+  const totalSeconds = frame / fpsVal;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const f = Math.round(frame % fpsVal);
+  const pad = (n) => String(n).padStart(2, '0');
+  return pad(h) + ':' + pad(m) + ':' + pad(s) + ':' + pad(f);
+}
+
+function render(){
+  if(!video.videoWidth) return;
+  const frame = currentFrame();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const joints = mergedJointsAt(frame);
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#F2A93B';
+  CONNECTIONS.forEach(([a, b]) => {
+    if(joints[a] && joints[b]){
+      ctx.beginPath();
+      ctx.moveTo(joints[a].pt.x, joints[a].pt.y);
+      ctx.lineTo(joints[b].pt.x, joints[b].pt.y);
+      ctx.stroke();
+    }
+  });
+
+  JOINT_NAMES.forEach(name => {
+    const j = joints[name];
+    if(!j) return;
+    if(name === selectedJoint){
+      ctx.beginPath();
+      ctx.arc(j.pt.x, j.pt.y, 11, 0, Math.PI * 2);
+      ctx.strokeStyle = '#3FD6C5';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(j.pt.x, j.pt.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = j.manual ? '#3FD6C5' : (j.pt.v < 0.3 || j.pt.interp ? '#B8823A' : '#111');
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(j.pt.x, j.pt.y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.font = '13px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(NODE_NUMBERS[name], j.pt.x + 10, j.pt.y - 8);
+  });
+
+  timecodeEl.textContent = framesToTimecode(frame, fps);
+  frameCountEl.textContent = 'frame ' + frame + ' / ' + Math.max(0, totalFrames - 1);
+  scrubber.value = frame;
+
+  drawAngleOverlay(joints);
+  updateCoordTable(frame, joints);
+  updateAngleReadout(joints);
+}
+
+function drawAngleOverlay(joints){
+  const nameA = angleASelect.value;
+  const nameV = angleVertexSelect.value;
+  const nameB = angleBSelect.value;
+  if(!nameA || !nameV || !nameB) return;
+  const a = joints[nameA];
+  const v = joints[nameV];
+  const b = joints[nameB];
+  if(!a || !v || !b) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#FF5C7A';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(v.pt.x, v.pt.y);
+  ctx.lineTo(a.pt.x, a.pt.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(v.pt.x, v.pt.y);
+  ctx.lineTo(b.pt.x, b.pt.y);
+  ctx.stroke();
+
+  const angleToA = Math.atan2(a.pt.y - v.pt.y, a.pt.x - v.pt.x);
+  const angleToB = Math.atan2(b.pt.y - v.pt.y, b.pt.x - v.pt.x);
+  ctx.beginPath();
+  ctx.arc(v.pt.x, v.pt.y, 26, angleToA, angleToB);
+  ctx.strokeStyle = 'rgba(255,92,122,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(v.pt.x, v.pt.y, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FF5C7A';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function computeAngleDegrees(a, v, b){
+  const v1x = a.pt.x - v.pt.x;
+  const v1y = a.pt.y - v.pt.y;
+  const v2x = b.pt.x - v.pt.x;
+  const v2y = b.pt.y - v.pt.y;
+  const dot = v1x * v2x + v1y * v2y;
+  const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+  const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+  if(mag1 === 0 || mag2 === 0) return null;
+  let cos = dot / (mag1 * mag2);
+  cos = Math.min(1, Math.max(-1, cos));
+  return Math.acos(cos) * (180 / Math.PI);
+}
+
+function updateAngleReadout(joints){
+  const nameA = angleASelect.value;
+  const nameV = angleVertexSelect.value;
+  const nameB = angleBSelect.value;
+
+  if(!nameA || !nameV || !nameB){
+    angleResultEl.innerHTML = 'Click any three points on the frame to see the angle.';
+    return;
+  }
+  if(nameA === nameV || nameB === nameV || nameA === nameB){
+    angleResultEl.innerHTML = 'Point A, vertex, and Point B must all be different joints.';
+    return;
+  }
+
+  const a = joints[nameA];
+  const v = joints[nameV];
+  const b = joints[nameB];
+
+  if(!a || !v || !b){
+    angleResultEl.innerHTML = 'One or more of those points is missing on this frame.';
+    return;
+  }
+
+  const deg = computeAngleDegrees(a, v, b);
+  if(deg === null){
+    angleResultEl.innerHTML = 'Points are overlapping — can\'t compute an angle.';
+    return;
+  }
+
+  const label = name => NODE_NUMBERS[name] + '. ' + name.replace(/_/g,' ');
+  angleResultEl.innerHTML = 'Angle at <strong style="color:#fff;">' + label(nameV) + '</strong>, between ' +
+    label(nameA) + ' and ' + label(nameB) + ': <strong>' + deg.toFixed(1) + '&deg;</strong>';
+}
+
+function updateCoordTable(frame, joints){
+  coordTable.innerHTML = '';
+  JOINT_NAMES.forEach(name => {
+    const tr = document.createElement('tr');
+    tr.dataset.joint = name;
+    const classes = [];
+    const j = joints[name];
+    if(!j){
+      classes.push('missing');
+      tr.innerHTML = '<td>' + NODE_NUMBERS[name] + '</td><td>' + name.replace(/_/g,' ') + '</td><td>-</td><td>-</td>';
+    } else {
+      if(j.manual) classes.push('manual');
+      tr.innerHTML = '<td>' + NODE_NUMBERS[name] + '</td><td>' + name.replace(/_/g,' ') +
+        '</td><td>' + Math.round(j.pt.x) + '</td><td>' + Math.round(j.pt.y) + '</td>';
+    }
+    if(name === selectedJoint) classes.push('selected');
+    tr.className = classes.join(' ');
+    tr.addEventListener('click', () => selectJoint(name));
+    coordTable.appendChild(tr);
+  });
+}
+
+function selectJoint(name){
+  selectedJoint = name;
+  render();
+}
+
+video.addEventListener('seeked', render);
+video.addEventListener('timeupdate', () => { if(!video.paused) render(); });
+
+function loop(){
+  if(!video.paused){
+    render();
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
+document.getElementById('prevFrame').addEventListener('click', () => {
+  video.pause();
+  seekToFrame(currentFrame() - 1);
+});
+document.getElementById('nextFrame').addEventListener('click', () => {
+  video.pause();
+  seekToFrame(currentFrame() + 1);
+});
+playPauseBtn.addEventListener('click', () => {
+  if(video.paused){
+    video.playbackRate = parseFloat(speedSlider.value);
+    video.play();
+    playPauseBtn.textContent = 'Pause';
+    rafId = requestAnimationFrame(loop);
+  } else {
+    video.pause();
+    playPauseBtn.textContent = 'Play';
+    if(rafId) cancelAnimationFrame(rafId);
+  }
+});
+video.addEventListener('pause', () => { playPauseBtn.textContent = 'Play'; render(); });
+
+scrubber.addEventListener('input', () => {
+  video.pause();
+  seekToFrame(parseInt(scrubber.value, 10));
+});
+
+speedSlider.addEventListener('input', () => {
+  const v = parseFloat(speedSlider.value);
+  video.playbackRate = v;
+  speedLabel.textContent = v.toFixed(2) + 'x';
+});
+
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement.tagName;
+  if(tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  if(e.code === 'ArrowLeft'){
+    e.preventDefault();
+    video.pause();
+    seekToFrame(currentFrame() - 1);
+  } else if(e.code === 'ArrowRight'){
+    e.preventDefault();
+    video.pause();
+    seekToFrame(currentFrame() + 1);
+  } else if(e.code === 'Space'){
+    e.preventDefault();
+    playPauseBtn.click();
+  }
+});
+
+jointSelect.addEventListener('change', () => {
+  armedJoint = jointSelect.value;
+  selectedJoint = armedJoint;
+  canvas.classList.toggle('armed', !!armedJoint);
+  render();
+});
+
+function canvasCoordsFromEvent(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+function hitTestJoint(x, y){
+  const joints = mergedJointsAt(currentFrame());
+  let closest = null;
+  let closestDist = HIT_RADIUS;
+  JOINT_NAMES.forEach(name => {
+    const j = joints[name];
+    if(!j) return;
+    const dx = j.pt.x - x;
+    const dy = j.pt.y - y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if(dist <= closestDist){
+      closestDist = dist;
+      closest = name;
+    }
+  });
+  return closest;
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  const { x, y } = canvasCoordsFromEvent(e);
+  const hit = hitTestJoint(x, y);
+
+  if(hit){
+    if(autoAngleToggle.checked) pushAngleClick(hit);
+    draggingJoint = hit;
+    selectedJoint = hit;
+    canvas.classList.add('dragging');
+    canvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    render();
+    return;
+  }
+  if(armedJoint){
+    const frame = currentFrame();
+    if(!overrides[frame]) overrides[frame] = {};
+    overrides[frame][armedJoint] = { x, y };
+    selectedJoint = armedJoint;
+    render();
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if(!draggingJoint){
+    const { x, y } = canvasCoordsFromEvent(e);
+    const hit = hitTestJoint(x, y);
+    canvas.style.cursor = hit ? 'grab' : (armedJoint ? 'crosshair' : 'default');
+    return;
+  }
+  const { x, y } = canvasCoordsFromEvent(e);
+  const clampedX = Math.min(canvas.width, Math.max(0, x));
+  const clampedY = Math.min(canvas.height, Math.max(0, y));
+  const frame = currentFrame();
+  if(!overrides[frame]) overrides[frame] = {};
+  overrides[frame][draggingJoint] = { x: clampedX, y: clampedY };
+  render();
+});
+
+function endDrag(){
+  if(draggingJoint){
+    draggingJoint = null;
+    canvas.classList.remove('dragging');
+    canvas.style.cursor = 'default';
+  }
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('pointerleave', () => { if(!draggingJoint) canvas.style.cursor = 'default'; });
+
+document.getElementById('clearOverride').addEventListener('click', () => {
+  const target = selectedJoint || armedJoint;
+  if(!target){
+    alert('Click a point on the frame (or a row in the table) to select a joint first.');
+    return;
+  }
+  const frame = currentFrame();
+  if(overrides[frame]) delete overrides[frame][target];
+  render();
+});
+
+[angleASelect, angleVertexSelect, angleBSelect].forEach(select => {
+  select.addEventListener('change', () => render());
+});
+
+function pushAngleClick(name){
+  // Ignore immediate repeats (e.g. re-grabbing the same point to keep dragging it)
+  // so it doesn't collapse the rolling window down to one joint.
+  if(angleClickQueue[angleClickQueue.length - 1] === name) return;
+  angleClickQueue.push(name);
+  if(angleClickQueue.length > 3) angleClickQueue.shift();
+  if(angleClickQueue.length === 3){
+    angleASelect.value = angleClickQueue[0];
+    angleVertexSelect.value = angleClickQueue[1];
+    angleBSelect.value = angleClickQueue[2];
+  }
+}
+
+clearAnglePicksBtn.addEventListener('click', () => {
+  angleClickQueue = [];
+  angleASelect.value = '';
+  angleVertexSelect.value = '';
+  angleBSelect.value = '';
+  render();
+});
+
+document.getElementById('markEvent').addEventListener('click', () => {
+  const label = document.getElementById('eventLabel').value.trim();
+  if(!label){
+    alert('Enter a label for this event first.');
+    return;
+  }
+  addEvent(label);
+});
+document.getElementById('quickTouchdown').addEventListener('click', () => addEvent('Touchdown'));
+document.getElementById('quickToeoff').addEventListener('click', () => addEvent('Toe-off'));
+
+function addEvent(label){
+  const frame = currentFrame();
+  events.push({ frame, time: frame / fps, label });
+  events.sort((a, b) => a.frame - b.frame);
+  renderEvents();
+}
+
+function renderEvents(){
+  if(events.length === 0){
+    eventListEl.innerHTML = '<p class="empty">No events marked yet.</p>';
+    return;
+  }
+  eventListEl.innerHTML = '';
+  events.forEach((ev, idx) => {
+    const row = document.createElement('div');
+    row.className = 'event-item';
+    row.innerHTML = '<span class="frame-badge">' + framesToTimecode(ev.frame, fps) + '</span>' +
+      '<span class="label">' + ev.label + '</span>';
+    const gotoBtn = document.createElement('button');
+    gotoBtn.className = 'ghost';
+    gotoBtn.textContent = 'Go to';
+    gotoBtn.addEventListener('click', () => { video.pause(); seekToFrame(ev.frame); });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ghost danger';
+    delBtn.textContent = 'Remove';
+    delBtn.addEventListener('click', () => { events.splice(idx, 1); renderEvents(); });
+    row.appendChild(gotoBtn);
+    row.appendChild(delBtn);
+    eventListEl.appendChild(row);
+  });
+}
+
+document.getElementById('exportCsv').addEventListener('click', () => {
+  if(totalFrames === 0){
+    alert('Load a video first.');
+    return;
+  }
+  let out = 'frame,joint_name,joint_number,x,y,manual\n';
+  for(let f = 0; f < totalFrames; f++){
+    const joints = mergedJointsAt(f);
+    JOINT_NAMES.forEach(name => {
+      const j = joints[name];
+      if(j){
+        out += f + ',' + name + ',' + NODE_NUMBERS[name] + ',' + j.pt.x + ',' + j.pt.y + ',' + (j.manual ? 'true' : 'false') + '\n';
+      } else {
+        out += f + ',' + name + ',' + NODE_NUMBERS[name] + ',,,false\n';
+      }
+    });
+  }
+  downloadText(out, 'sprint_coordinates_corrected.csv');
+});
+
+document.getElementById('exportEvents').addEventListener('click', () => {
+  if(events.length === 0){
+    alert('No events marked yet.');
+    return;
+  }
+  let out = 'frame,time_seconds,timecode,label\n';
+  events.forEach(ev => {
+    out += ev.frame + ',' + ev.time.toFixed(4) + ',' + framesToTimecode(ev.frame, fps) + ',' + ev.label + '\n';
+  });
+  downloadText(out, 'sprint_events.csv');
+});
+
+let videoFile = null;
+const trackBtn = document.getElementById('trackBtn');
+const trackStatus = document.getElementById('trackStatus');
+
+trackBtn.addEventListener('click', async () => {
+  if(!videoFile){ alert('Choose a video file first.'); return; }
+  const fd = new FormData();
+  fd.append('video', videoFile);
+  fd.append('near_side', document.getElementById('nearSide').value);
+  fd.append('sigma', document.getElementById('sigmaInput').value);
+  fd.append('complexity', document.getElementById('modelSel').value);
+  fd.append('t_start', document.getElementById('tStart').value);
+  fd.append('t_end', document.getElementById('tEnd').value);
+  trackBtn.disabled = true;
+  trackStatus.textContent = 'Uploading video...';
+  try{
+    const started = await (await fetch('/track', { method: 'POST', body: fd })).json();
+    if(started.error) throw new Error(started.error);
+    const t0 = Date.now();
+    while(true){
+      await new Promise(r => setTimeout(r, 700));
+      const s = await (await fetch('/status/' + started.job)).json();
+      if(s.status === 'error') throw new Error(s.error);
+      if(s.status === 'done'){
+        parseCsv(await (await fetch('/csv/' + started.job)).text());
+        fps = s.info.fps;
+        fpsInput.value = fps.toFixed(3);
+        recomputeTotalFrames();
+        trackStatus.textContent = 'Done. Tracked frames ' + s.info.first_frame + ' to ' + s.info.last_frame + ' (athlete in ' + s.info.present_frames +
+          ' of ' + s.info.frames + ' frames), near side ' + s.info.near_side + ', ' + s.info.relabelled_frames + ' limb frames re-labelled. CSV saved to ' + s.info.csv;
+        render();
+        break;
+      }
+      const rate = s.done / ((Date.now() - t0) / 1000);
+      const eta = s.total && rate > 0 ? Math.round((s.total - s.done) / rate) + 's left' : '';
+      trackStatus.textContent = 'Tracking... ' + s.done + ' / ' + (s.total || '?') + ' frames (' +
+        rate.toFixed(1) + ' frames/s' + (eta ? ', ' + eta : '') + ')';
+    }
+  }catch(err){
+    trackStatus.textContent = 'Tracker failed: ' + err.message + '. Is tracker_server.py running, and is this page open at http://localhost:5000?';
+  }
+  trackBtn.disabled = false;
+});
+
+/* ---------- Touchdown / toe-off tab ---------- */
+const byId = id => document.getElementById(id);
+const ANGLE_COLS = ['trunk_lean_deg','thigh_front_deg','thigh_rear_deg','shank_front_deg','shank_rear_deg',
+  'knee_flex_front_deg','knee_flex_rear_deg','elbow_flex_front_deg','elbow_flex_rear_deg','pelvis_height_px','stance_foot_ahead_px'];
+let contacts = [];   // { foot: 'front'|'rear', td: frame, to: frame, flags: [] }
+let sel = -1;
+
+function showTab(t){
+  byId('tabMain').style.display = t === 'main' ? '' : 'none';
+  byId('tabEvents').style.display = t === 'events' ? '' : 'none';
+  byId('tabMainBtn').className = t === 'main' ? 'primary' : 'ghost';
+  byId('tabEventsBtn').className = t === 'events' ? 'primary' : 'ghost';
+  if(t === 'main'){ resizeCanvas(); render(); } else renderContacts();
+}
+byId('tabMainBtn').addEventListener('click', () => showTab('main'));
+byId('tabEventsBtn').addEventListener('click', () => showTab('events'));
+
+// Lowest point of each foot (heel or toe) per frame, using manual edits where they exist
+function footSeries(){
+  const S = { front: [], rear: [] };
+  for(let f = 0; f < totalFrames; f++){
+    const j = mergedJointsAt(f);
+    ['front', 'rear'].forEach(s => {
+      const pts = [j[s + '_heel'], j[s + '_toe']].filter(Boolean);
+      S[s].push(pts.length ? {
+        y: Math.max(...pts.map(p => p.pt.y)),
+        bad: pts.some(p => p.pt.interp || p.pt.v < 0.3)
+      } : null);
+    });
+  }
+  return S;
+}
+
+// Ground = lowest foot position reached within about 0.3 s either side, so it follows slow drift
+function groundLine(S){
+  const n = totalFrames, W = Math.max(2, Math.round(0.3 * fps)), g = new Array(n).fill(NaN);
+  for(let f = 0; f < n; f++){
+    let m = -Infinity;
+    for(let k = Math.max(0, f - W); k <= Math.min(n - 1, f + W); k++){
+      ['front', 'rear'].forEach(s => { if(S[s][k]) m = Math.max(m, S[s][k].y); });
+    }
+    if(m > -Infinity) g[f] = m;
+  }
+  return g;
+}
+
+function torsoPx(){
+  const d = [];
+  for(const f in csvData){
+    const c = csvData[f];
+    if(c.neck && c.pelvis) d.push(Math.hypot(c.neck.x - c.pelvis.x, c.neck.y - c.pelvis.y));
+  }
+  d.sort((a, b) => a - b);
+  return d.length ? d[d.length >> 1] : 50;
+}
+
+// +1 if the athlete runs toward larger x, -1 otherwise (so angles are positive "forward")
+function runDirection(){
+  let a = null, b = null;
+  for(let f = 0; f < totalFrames; f++){
+    const p = (csvData[f] || {}).pelvis;
+    if(p){ if(!a) a = p; b = p; }
+  }
+  return a && b && b.x < a.x ? -1 : 1;
+}
+
+function env(){
+  const S = footSeries();
+  return { S, g: groundLine(S), torso: torsoPx(), dir: runDirection() };
+}
+
+function detect(){
+  if(!totalFrames || Object.keys(csvData).length === 0){
+    alert('Track the video (or load a coordinates CSV) first.');
+    return;
+  }
+  const E = env(), n = totalFrames;
+  const tol = byId('tolPct').value / 100 * E.torso, minLen = +byId('minLen').value;
+  const found = [];
+  ['front', 'rear'].forEach(side => {
+    const A = E.S[side], g = E.g;
+    // a frame is "on the ground" if the foot is within tolerance of the ground line and has stopped moving vertically
+    const on = A.map((p, f) => {
+      if(!p || isNaN(g[f])) return false;
+      const a = A[f - 1] || p, b = A[f + 1] || p;
+      return g[f] - p.y <= tol && Math.abs(b.y - a.y) / 2 <= tol * 0.5;
+    });
+    const airborne = (lo, hi) => {
+      for(let k = Math.max(0, lo); k <= Math.min(n - 1, hi); k++) if(A[k] && g[k] - A[k].y > 2.5 * tol) return true;
+      return false;
+    };
+    let f = 0;
+    while(f < n){
+      if(!on[f]){ f++; continue; }
+      let e = f;
+      while(e + 1 < n && (on[e + 1] || on[e + 2])) e++;   // bridge a one-frame flicker
+      if(e - f + 1 >= minLen){
+        const flags = [];
+        if(!airborne(f - 8, f - 1)) flags.push('no airborne phase before');
+        if(!airborne(e + 1, e + 8)) flags.push('no airborne phase after');
+        let bad = 0, tot = 0;
+        for(let k = f - 1; k <= e + 1; k++){ if(k < 0 || k >= n) continue; tot++; if(!A[k] || A[k].bad) bad++; }
+        if(tot && bad / tot > 0.34) flags.push('low-confidence tracking');
+        found.push({ foot: side, td: f, to: Math.min(e + 1, n - 1), flags });
+      }
+      f = e + 1;
+    }
+  });
+  contacts = found.sort((a, b) => a.td - b.td);
+  sel = -1;
+  const nf = contacts.filter(c => c.foot === 'front').length;
+  byId('detectStatus').textContent = contacts.length + ' stances found (' + nf + ' front, ' + (contacts.length - nf) +
+    ' rear). One frame is ' + (1000 / fps).toFixed(0) + ' ms, so touchdown, toe-off and contact time are only good to about one frame. Check any flagged row.';
+  renderContacts();
+}
+byId('detectBtn').addEventListener('click', detect);
+byId('addContactBtn').addEventListener('click', () => {
+  if(!totalFrames){ alert('Load a video first.'); return; }
+  const f = currentFrame();
+  contacts.push({ foot: 'front', td: f, to: Math.min(f + 3, totalFrames - 1), flags: ['added by hand'] });
+  contacts.sort((a, b) => a.td - b.td);
+  renderContacts();
+});
+
+// All node data and joint angles at one frame (angles: 0 = vertical, positive = forward; knee/elbow: 0 = straight)
+function snapshot(f, foot, E){
+  const j = mergedJointsAt(f), P = {}, R = {}, d = E.dir;
+  JOINT_NAMES.forEach(nm => { if(j[nm]) P[nm] = j[nm].pt; });
+  const deg = r => +(r * 180 / Math.PI).toFixed(2);
+  const interior = (a, v, b) => {
+    const x1 = a.x - v.x, y1 = a.y - v.y, x2 = b.x - v.x, y2 = b.y - v.y;
+    return Math.acos(Math.max(-1, Math.min(1, (x1 * x2 + y1 * y2) / (Math.hypot(x1, y1) * Math.hypot(x2, y2)))));
+  };
+  if(P.neck && P.pelvis) R.trunk_lean_deg = deg(Math.atan2(d * (P.neck.x - P.pelvis.x), P.pelvis.y - P.neck.y));
+  ['front', 'rear'].forEach(s => {
+    const k = P[s + '_knee'], h = P[s + '_heel'], p = P.pelvis, e = P['elbow_' + s], w = P['wrist_' + s];
+    if(p && k) R['thigh_' + s + '_deg'] = deg(Math.atan2(d * (k.x - p.x), k.y - p.y));
+    if(k && h) R['shank_' + s + '_deg'] = deg(Math.atan2(d * (h.x - k.x), h.y - k.y));
+    if(p && k && h) R['knee_flex_' + s + '_deg'] = +(180 - interior(p, k, h) * 180 / Math.PI).toFixed(2);
+    if(P.neck && e && w) R['elbow_flex_' + s + '_deg'] = +(180 - interior(P.neck, e, w) * 180 / Math.PI).toFixed(2);
+  });
+  const gy = E.g[f];
+  if(P.pelvis && !isNaN(gy)) R.pelvis_height_px = +(gy - P.pelvis.y).toFixed(2);
+  const h = P[foot + '_heel'], t = P[foot + '_toe'];
+  if(P.pelvis && h && t) R.stance_foot_ahead_px = +(d * ((h.x + t.x) / 2 - P.pelvis.x)).toFixed(2);
+  return { P, R, manual: Object.keys(overrides[f] || {}).length, ground: isNaN(gy) ? '' : +gy.toFixed(2) };
+}
+
+function renderContacts(){
+  const el = byId('contactList');
+  if(!contacts.length){
+    el.innerHTML = '<p class="empty">No stances yet. Detect, or add one by hand.</p>';
+    byId('detailPanel').style.display = 'none';
+    return;
+  }
+  const rows = contacts.map((c, i) =>
+    '<tr' + (i === sel ? ' style="font-weight:600"' : '') + '><td>' + (i + 1) + '</td>' +
+    '<td><select data-i="' + i + '" data-k="foot"><option' + (c.foot === 'front' ? ' selected' : '') + '>front</option><option' +
+      (c.foot === 'rear' ? ' selected' : '') + '>rear</option></select></td>' +
+    '<td><input type="number" min="0" style="width:70px" data-i="' + i + '" data-k="td" value="' + c.td + '"></td>' +
+    '<td><input type="number" min="0" style="width:70px" data-i="' + i + '" data-k="to" value="' + c.to + '"></td>' +
+    '<td>' + ((c.to - c.td) / fps * 1000).toFixed(0) + ' ms</td><td>' + (c.flags.join('; ') || 'ok') + '</td>' +
+    '<td><button class="ghost" data-sel="' + i + '">Data</button> <button class="ghost" data-go="' + i + '">Go to frame</button> ' +
+    '<button class="ghost danger" data-del="' + i + '">Delete</button></td></tr>').join('');
+  el.innerHTML = '<table style="width:100%"><thead><tr><th>#</th><th>Foot</th><th>Touchdown frame</th><th>Toe-off frame</th>' +
+    '<th>Contact</th><th>Flags</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+  renderDetail();
+}
+
+byId('contactList').addEventListener('change', e => {
+  const d = e.target.dataset;
+  if(d.i === undefined) return;
+  const c = contacts[+d.i];
+  if(d.k === 'foot') c.foot = e.target.value;
+  else c[d.k] = Math.max(0, Math.min(totalFrames - 1, parseInt(e.target.value, 10) || 0));
+  if(!c.flags.includes('edited')) c.flags.push('edited');
+  renderContacts();
+});
+byId('contactList').addEventListener('click', e => {
+  const d = e.target.dataset;
+  if(d.sel !== undefined){ sel = +d.sel; renderContacts(); }
+  if(d.del !== undefined){ contacts.splice(+d.del, 1); sel = -1; renderContacts(); }
+  if(d.go !== undefined){ video.pause(); seekToFrame(contacts[+d.go].td); showTab('main'); }
+});
+
+function drawStick(cv, P, foot, ground, box){
+  const c = cv.getContext('2d'), w = cv.width, h = cv.height;
+  const s = Math.min(w / (box.x1 - box.x0), h / (box.y1 - box.y0)) * 0.9;
+  const X = x => (x - box.x0) * s + w * 0.05, Y = y => (y - box.y0) * s + h * 0.05;
+  c.clearRect(0, 0, w, h);
+  if(ground !== ''){
+    c.strokeStyle = '#888'; c.setLineDash([4, 4]); c.beginPath();
+    c.moveTo(0, Y(ground)); c.lineTo(w, Y(ground)); c.stroke(); c.setLineDash([]);
+  }
+  c.lineWidth = 2; c.strokeStyle = '#aaa';
+  CONNECTIONS.forEach(([a, b]) => {
+    if(P[a] && P[b]){ c.beginPath(); c.moveTo(X(P[a].x), Y(P[a].y)); c.lineTo(X(P[b].x), Y(P[b].y)); c.stroke(); }
+  });
+  JOINT_NAMES.forEach(nm => {
+    if(!P[nm]) return;
+    c.fillStyle = nm.startsWith(foot + '_') && !nm.endsWith('knee') ? '#E8A33D' : '#ddd';
+    c.beginPath(); c.arc(X(P[nm].x), Y(P[nm].y), 4, 0, 7); c.fill();
+  });
+}
+
+function renderDetail(){
+  const panel = byId('detailPanel');
+  if(sel < 0 || !contacts[sel]){ panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const c = contacts[sel], E = env(), A = snapshot(c.td, c.foot, E), B = snapshot(c.to, c.foot, E);
+  byId('detailTitle').textContent = 'Stance ' + (sel + 1) + ', ' + c.foot + ' foot: touchdown frame ' + c.td + ', toe-off frame ' + c.to;
+  const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  [A, B].forEach(S => {
+    Object.values(S.P).forEach(p => {
+      box.x0 = Math.min(box.x0, p.x); box.x1 = Math.max(box.x1, p.x);
+      box.y0 = Math.min(box.y0, p.y); box.y1 = Math.max(box.y1, p.y);
+    });
+    if(S.ground !== '') box.y1 = Math.max(box.y1, S.ground);
+  });
+  if(box.x1 > box.x0 && box.y1 > box.y0){
+    drawStick(byId('pvTd'), A.P, c.foot, A.ground, box);
+    drawStick(byId('pvTo'), B.P, c.foot, B.ground, box);
+  }
+  let t = '<table style="width:100%"><thead><tr><th></th><th>Touchdown x</th><th>y</th><th>Toe-off x</th><th>y</th></tr></thead><tbody>';
+  JOINT_NAMES.forEach(nm => {
+    t += '<tr><td>' + NODE_NUMBERS[nm] + '. ' + nm.replace(/_/g, ' ') + '</td>';
+    [[c.td, A], [c.to, B]].forEach(([f, S]) => ['x', 'y'].forEach(ax => {
+      const p = S.P[nm];
+      t += '<td><input type="number" step="0.1" style="width:84px" data-f="' + f + '" data-n="' + nm + '" data-a="' + ax + '"' +
+        (p ? ' value="' + (+p[ax]).toFixed(2) + '"' : ' disabled placeholder="missing"') + '></td>';
+    }));
+    t += '</tr>';
+  });
+  ANGLE_COLS.forEach(k => {
+    t += '<tr><td>' + k + '</td><td colspan="2">' + (A.R[k] ?? '') + '</td><td colspan="2">' + (B.R[k] ?? '') + '</td></tr>';
+  });
+  t += '</tbody></table><div class="row" style="margin-top:12px;"><button class="ghost" data-reset="' + c.td +
+    '">Reset touchdown nodes</button><button class="ghost" data-reset="' + c.to + '">Reset toe-off nodes</button></div>';
+  byId('detailTable').innerHTML = t;
+}
+
+byId('detailTable').addEventListener('change', e => {
+  const d = e.target.dataset;
+  if(d.n === undefined) return;
+  const f = +d.f, cur = mergedJointsAt(f)[d.n];
+  if(!cur) return;
+  const pt = { x: cur.pt.x, y: cur.pt.y };
+  pt[d.a] = parseFloat(e.target.value);
+  (overrides[f] = overrides[f] || {})[d.n] = pt;
+  renderDetail();
+  render();
+});
+byId('detailTable').addEventListener('click', e => {
+  if(e.target.dataset.reset !== undefined){
+    delete overrides[+e.target.dataset.reset];
+    renderDetail();
+    render();
+  }
+});
+
+byId('submitBtn').addEventListener('click', () => {
+  if(!contacts.length){ alert('No stances to submit yet. Detect or add some first.'); return; }
+  const E = env();
+  const head = ['event_id', 'stance', 'foot', 'type', 'frame', 'time_s', 'contact_time_s', 'flight_before_s', 'flags',
+    'manual_nodes', 'ground_y_px', 'torso_px']
+    .concat(JOINT_NAMES.flatMap(n => [n + '_x', n + '_y'])).concat(ANGLE_COLS).join(',');
+  const rows = [];
+  [...contacts].sort((a, b) => a.td - b.td).forEach((c, i, arr) => {
+    const prev = arr[i - 1];
+    [['touchdown', c.td], ['toe_off', c.to]].forEach(([type, f]) => {
+      const s = snapshot(f, c.foot, E), isTd = type === 'touchdown';
+      rows.push(['S' + (i + 1) + (isTd ? '_TD' : '_TO'), i + 1, c.foot, type, f, (f / fps).toFixed(4),
+        isTd ? '' : ((c.to - c.td) / fps).toFixed(4),
+        isTd && prev && prev.foot !== c.foot && c.td >= prev.to ? ((c.td - prev.to) / fps).toFixed(4) : '',
+        '"' + c.flags.join('; ') + '"', s.manual, s.ground, E.torso.toFixed(2)]
+        .concat(JOINT_NAMES.flatMap(n => s.P[n] ? [(+s.P[n].x).toFixed(2), (+s.P[n].y).toFixed(2)] : ['', '']))
+        .concat(ANGLE_COLS.map(k => s.R[k] ?? '')).join(','));
+    });
+  });
+  downloadText(head + '\n' + rows.join('\n') + '\n', 'sprint_event_data.csv');
+  setTimeout(() => byId('exportCsv').click(), 400);
+});
+
+function downloadText(text, filename){
+  const blob = new Blob([text], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
